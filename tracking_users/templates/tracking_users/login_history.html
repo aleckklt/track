@@ -14,18 +14,16 @@
         <thead class="table-dark">
             <tr>
                 <th>Nom d'utilisateur</th>
-                <th>Email</th>
-                <th>Date de connexion</th>
+                <th>Statut</th>
                 <th>Date de déconnexion</th>
                 <th>Temps de connexion</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody id="historyTableBody">
         {% for entry in history %}
             <tr>
                 <td>{{ entry.user.username }}</td>
-                <td>{{ entry.user.email }}</td>
-                <td>{{ entry.login_time }}</td>
                 <td>{{ entry.logout_time|default:"-" }}</td>
                 <td>{{ entry.session_duration|default:"-" }}</td>
             </tr>
@@ -81,20 +79,12 @@ function updateHistoryTable(data) {
 
     const user = data.user || {};
     const username = user.username || "-";
-    const nom = user.last_name || "-";
-    const prenom = user.first_name || "-";
-    const email = user.email || "-";
-    const loginTime = formatDate(data.login_time);
     const logoutTime = data.logout_time ? formatDate(data.logout_time) : "-";
     const duree = data.session_duration || "-";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
         <td>${username}</td>
-        <td>${nom}</td>
-        <td>${prenom}</td>
-        <td>${email}</td>
-        <td>${loginTime}</td>
         <td>${logoutTime}</td>
         <td>${duree}</td>
     `;

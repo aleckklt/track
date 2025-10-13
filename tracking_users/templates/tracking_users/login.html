@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <title>Connexion</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
     <div class="container my-5" style="max-width: 500px;">
@@ -19,18 +20,51 @@
             <div class="alert alert-danger">Identifiants incorrects. Veuillez réessayer.</div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" novalidate>
             {% csrf_token %}
             <div class="mb-3">
                 <label for="username" class="form-label">Nom d'utilisateur</label>
-                <input type="text" name="username" class="form-control" placeholder="Nom d'utilisateur" required>
+                <input type="text" name="username" id="username" class="form-control" placeholder="Nom d'utilisateur" required>
             </div>
+
             <div class="mb-3">
                 <label for="password" class="form-label">Mot de passe</label>
-                <input type="password" name="password" class="form-control" placeholder="Mot de passe" required>
+                <div class="input-group">
+                    <input
+                        type="password"
+                        name="password"
+                        id="password"
+                        class="form-control"
+                        placeholder="Mot de passe"
+                        required
+                        aria-label="Mot de passe"
+                    >
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary d-flex align-items-center"
+                        id="togglePassword"
+                        aria-label="Afficher / Masquer le mot de passe"
+                    >
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
+
             <button type="submit" class="btn btn-success w-100">Se connecter</button>
         </form>
     </div>
+
+    <script>
+        const togglePassword = document.getElementById("togglePassword");
+        const passwordField = document.getElementById("password");
+        const icon = togglePassword.querySelector("i");
+
+        togglePassword.addEventListener("click", () => {
+            const isPassword = passwordField.type === "password";
+            passwordField.type = isPassword ? "text" : "password";
+            icon.classList.toggle("bi-eye");
+            icon.classList.toggle("bi-eye-slash");
+        });
+    </script>
 </body>
 </html>
