@@ -1,42 +1,51 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
-from .models import LoginHistory
-from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.utils.timezone import now
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+from django.utils import timezone
+from .models import LoginHistory
 
-def login_view(request):
+def home(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    return render(request, 'tracking_users/home.html')
+
+def user_login(request):
     if request.method == "POST":
         username = request.POST.get('username')
         password = request.POST.get('password')
         user = authenticate(request, username=username, password=password)
-        if user is not None:
+
+        if user:
             login(request, user)
-            request.session['connected_at'] = str(now())
-
-            log = LoginHistory.objects.create(user=user, connected_at=now())
-            request.session['log_id'] = log.id
-            channel_layer = get_channel_layer()
-            async_to_sync(channel_layer.group_send)(
-                "admin_notifications",
-                {
-                    "type": "user_connected",
-                    "data": {
-                        "first_name": user.first_name,
-                        "last_name": user.last_name,
-                        "email": user.email,
-                        "connected_at": str(log.login_time)
-                    }
-                }
+            LoginHistory.objects.create(
+                user=user,
+                login_time=timezone.now()
             )
-            return redirect("home")
-    return render(request, "tracking_users/home.html")
+            return redirect('home')
+        else:
+            return render(request, 'tracking_users/login.html', {'error': 'Identifiants incorrects.'})
+    return render(request, 'tracking_users/login.html')
 
-def logout_view(request):
+def user_logout(request):
+    if request.user.is_authenticated:
+        last_login = LoginHistory.objects.filter(
+            user=request.user, logout_time__isnull=True
+        ).last()
+
+        if last_login and last_login.login_time:
+            last_login.logout_time = timezone.now()
+            last_login.session_duration = last_login.logout_time - last_login.login_time
+            last_login.save()
+
     logout(request)
-    return redirect("login")
+    return redirect('login')
+
+def login_history(request):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    history = LoginHistory.objects.select_related('user').order_by('-login_time')
+    return render(request, 'tracking_users/login_history.html', {'history': history})
 
 def register_view(request):
     if request.method == 'POST':
@@ -60,11 +69,3 @@ def register_view(request):
             login(request, user)
             return redirect('home')
     return render(request, 'tracking_users/register.html')
-
-@staff_member_required
-def login_history(request):
-    history = LoginHistory.objects.all().select_related('user').order_by('-login_time')
-    return render(request, 'tracking_users/login_history.html', {'history': history})
-
-def home(request):
-    return render(request, 'tracking_users/home.html')

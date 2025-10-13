@@ -14,24 +14,20 @@
         <thead class="table-dark">
             <tr>
                 <th>Nom d'utilisateur</th>
-                <th>Nom</th>
-                <th>Prénom</th>
                 <th>Email</th>
                 <th>Date de connexion</th>
                 <th>Date de déconnexion</th>
                 <th>Temps de connexion</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="historyTableBody">
         {% for entry in history %}
             <tr>
                 <td>{{ entry.user.username }}</td>
-                <td>{{ entry.user.last_name }}</td>
-                <td>{{ entry.user.first_name }}</td>
                 <td>{{ entry.user.email }}</td>
                 <td>{{ entry.login_time }}</td>
                 <td>{{ entry.logout_time|default:"-" }}</td>
-                <td>{{ entry.time_connexion|default:"-" }}</td>
+                <td>{{ entry.session_duration|default:"-" }}</td>
             </tr>
         {% empty %}
             <tr>
@@ -49,56 +45,73 @@
 <script>
 const socket = new WebSocket(`ws://${window.location.host}/ws/admin/notifications/`);
 
-socket.onopen = () => console.log("Connexion WebSocket établie.");
-
-socket.onmessage = (event) => {
-  try {
-    const data = JSON.parse(event.data);
-
-    if (data.type === "user_event") {
-      ajouterLigneAdmin(data);
-    } else {
-      console.log("Message WebSocket reçu :", data);
-    }
-  } catch (e) {
-    console.error("Erreur JSON:", e);
-  }
+socket.onopen = () => {
+    console.log(" Connexion WebSocket établie avec le serveur.");
 };
 
-socket.onerror = (error) => console.error("Erreur WebSocket :", error);
+socket.onerror = (error) => {
+    console.error(" Erreur WebSocket :", error);
+};
 
 socket.onclose = (event) => {
-  if (event.wasClean) {
-    console.log(`Connexion fermée proprement (code=${event.code}, raison=${event.reason})`);
-  } else {
-    console.warn("Connexion WebSocket interrompue");
-  }
+    if (event.wasClean) {
+        console.log(` Connexion WebSocket fermée proprement (code=${event.code}, raison=${event.reason})`);
+    } else {
+        console.warn(" Connexion WebSocket interrompue !");
+    }
 };
 
-function ajouterLigneAdmin(data) {
-  const tbody = document.getElementById("historyTableBody");
-  if (!tbody) return;
+socket.onmessage = (event) => {
+    try {
+        const data = JSON.parse(event.data);
 
-  const tr = document.createElement("tr");
+        if (data.type === "user_event") {
+            updateHistoryTable(data);
+        } else {
+            console.log("Message WebSocket inconnu :", data);
+        }
+    } catch (error) {
+        console.error("Erreur de parsing JSON :", error);
+    }
+};
 
-  const username = data.user.username || "-";
-  const nom = data.user.last_name || "-";
-  const prenom = data.user.first_name || "-";
-  const email = data.user.email || "-";
-  const loginTime = new Date(data.login_time).toLocaleString();
-  const logoutTime = data.logout_time ? new Date(data.logout_time).toLocaleString() : "-";
-  const duree = data.session_duration || "-";
+function updateHistoryTable(data) {
+    const tbody = document.getElementById("historyTableBody");
+    if (!tbody) return;
 
-  tr.innerHTML = `
-    <td>${username}</td>
-    <td>${nom}</td>
-    <td>${prenom}</td>
-    <td>${email}</td>
-    <td>${loginTime}</td>
-    <td>${logoutTime}</td>
-    <td>${duree}</td>
-  `;
-  tbody.prepend(tr);
+    const user = data.user || {};
+    const username = user.username || "-";
+    const nom = user.last_name || "-";
+    const prenom = user.first_name || "-";
+    const email = user.email || "-";
+    const loginTime = formatDate(data.login_time);
+    const logoutTime = data.logout_time ? formatDate(data.logout_time) : "-";
+    const duree = data.session_duration || "-";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+        <td>${username}</td>
+        <td>${nom}</td>
+        <td>${prenom}</td>
+        <td>${email}</td>
+        <td>${loginTime}</td>
+        <td>${logoutTime}</td>
+        <td>${duree}</td>
+    `;
+    tbody.prepend(tr);
+}
+
+function formatDate(isoString) {
+    if (!isoString) return "-";
+    const date = new Date(isoString);
+    return date.toLocaleString('fr-FR', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
 }
 </script>
 
