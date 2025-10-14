@@ -3,6 +3,9 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.utils import timezone
 from .models import LoginHistory
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
+from django.db.models import Max
 
 def home(request):
     if not request.user.is_authenticated:
@@ -43,9 +46,18 @@ def user_logout(request):
 def login_history(request):
     if not request.user.is_staff:
         return redirect('home')
+    
+    latest_logins = (
+        LoginHistory.objects
+        .values('user')
+        .annotate(latest_login=Max('login_time'))
+    )
 
-    history = LoginHistory.objects.select_related('user').order_by('-login_time')
-    return render(request, 'tracking_users/login_history.html', {'history': history})
+    latest_entries = LoginHistory.objects.filter(
+        login_time__in=[item['latest_login'] for item in latest_logins]
+    ).select_related('user').order_by('user__username')
+
+    return render(request, 'tracking_users/login_history.html', {'history': latest_entries})
 
 def register_view(request):
     if request.method == 'POST':
@@ -69,3 +81,28 @@ def register_view(request):
             login(request, user)
             return redirect('home')
     return render(request, 'tracking_users/register.html')
+
+def activate_user(request, user_id):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    user = get_object_or_404(User, id=user_id)
+    user.is_active = True
+    user.save()
+    messages.success(request, f"L'utilisateur {user.username} a été activé avec succès .")
+    return redirect('login_history')
+
+
+def deactivate_user(request, user_id):
+    if not request.user.is_staff:
+        return redirect('home')
+
+    user = get_object_or_404(User, id=user_id)
+    if user == request.user:
+        messages.warning(request, "Vous ne pouvez pas vous désactiver vous-même .")
+        return redirect('login_history')
+
+    user.is_active = False
+    user.save()
+    messages.warning(request, f"L'utilisateur {user.username} a été désactivé .")
+    return redirect('login_history')
