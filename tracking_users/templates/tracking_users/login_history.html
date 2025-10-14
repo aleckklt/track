@@ -75,9 +75,9 @@
 <script>
 const socket = new WebSocket(`ws://${window.location.host}/ws/admin/notifications/`);
 
-socket.onopen = () => console.log("✅ Connexion WebSocket établie.");
-socket.onerror = (error) => console.error("❌ Erreur WebSocket :", error);
-socket.onclose = () => console.warn("⚠️ Connexion WebSocket fermée.");
+socket.onopen = () => console.log("Connexion WebSocket établie.");
+socket.onerror = (error) => console.error("Erreur WebSocket :", error);
+socket.onclose = () => console.warn("Connexion WebSocket fermée.");
 
 socket.onmessage = (event) => {
     try {
