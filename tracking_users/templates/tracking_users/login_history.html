@@ -18,6 +18,7 @@
                 <th>Date de déconnexion</th>
                 <th>Temps de connexion</th>
                 <th>Actions</th>
+                <th> Role </th>
             </tr>
         </thead>
         <tbody id="historyTableBody">
@@ -25,12 +26,7 @@
             <tr>
                 <td>{{ entry.user.username }}</td>
                 <td>
-                    {% if entry.user.is_superuser %}
-                        <span class="badge bg-info text-dark">Admin</span>
-                    {% else %}
-                        <span class="badge bg-secondary">Utilisateur</span>
-                    {% endif %}
-                    {% if entry.is_connected %}
+                    {% if not entry.logout_time %}
                         <span class="badge bg-success">Connecté</span>
                     {% else %}
                         <span class="badge bg-danger">Déconnecté</span>
@@ -44,7 +40,6 @@
                         -
                     {% endif %}
                 </td>
-
                 <td>
                     {% if entry.user.is_active %}
                         <form method="post" action="{% url 'deactivate_user' entry.user.id %}" class="d-inline">
@@ -56,6 +51,13 @@
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success btn-sm">Activer</button>
                         </form>
+                    {% endif %}
+                </td>
+                <td>
+                     {% if entry.user.is_superuser %}
+                        <span class="badge bg-info text-dark">Admin</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Utilisateur</span>
                     {% endif %}
                 </td>
             </tr>
@@ -73,58 +75,54 @@
 </div>
 
 <script>
-const socket = new WebSocket(`ws://${window.location.host}/ws/admin/notifications/`);
+    const socket = new WebSocket(`ws://${window.location.host}/ws/admin/notifications/`);
 
-socket.onopen = () => console.log("Connexion WebSocket établie.");
-socket.onerror = (error) => console.error("Erreur WebSocket :", error);
-socket.onclose = () => console.warn("Connexion WebSocket fermée.");
+    socket.onopen = () => console.log("Connecté au serveur WebSocket");
+    socket.onerror = (error) => console.error("Erreur WebSocket :", error);
+    socket.onclose = () => console.warn("Connexion WebSocket fermée.");
 
-socket.onmessage = (event) => {
-    try {
-        const data = JSON.parse(event.data);
-        if (data.type === "user_event") {
-            updateHistoryTable(data);
+    socket.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            if (data.type === "user_event") {
+                updateHistoryTable(data);
+            }
+        } catch (error) {
+            console.error("Erreur parsing JSON :", error);
         }
-    } catch (error) {
-        console.error("Erreur parsing JSON :", error);
+    };
+
+    function updateHistoryTable(data) {
+        const tbody = document.getElementById("historyTableBody");
+        if (!tbody) return;
+
+        const username = data.user || "-";
+        const isConnected = data.login_time
+            ? '<span class="badge bg-success">Connecté</span>'
+            : '<span class="badge bg-danger">Déconnecté</span>';
+        const logoutTime = data.logout_time ? formatDate(data.logout_time) : "-";
+        const duration = data.session_duration || "-";
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${username}</td>
+            <td>${isConnected}</td>
+            <td>${logoutTime}</td>
+            <td>${duration}</td>
+            <td>
+                <button class="btn btn-sm btn-warning">Désactiver</button>
+            </td>
+        `;
+        tbody.prepend(tr);
     }
-};
 
-function updateHistoryTable(data) {
-    const tbody = document.getElementById("historyTableBody");
-    if (!tbody) return;
-
-    const user = data.user || {};
-    const username = user.username || "-";
-    const isAdmin = user.is_superuser ? 
-        '<span class="badge bg-info text-dark">Admin</span>' : 
-        '<span class="badge bg-secondary">Utilisateur</span>';
-    const isConnected = data.is_connected ? 
-        '<span class="badge bg-success">Connecté</span>' : 
-        '<span class="badge bg-danger">Déconnecté</span>';
-    const logoutTime = data.logout_time ? formatDate(data.logout_time) : "-";
-    const duration = data.session_duration || "-";
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-        <td>${username}</td>
-        <td>${isAdmin} ${isConnected}</td>
-        <td>${logoutTime}</td>
-        <td>${duration}</td>
-        <td>
-            <button class="btn btn-sm btn-warning">Désactiver</button>
-        </td>
-    `;
-    tbody.prepend(tr);
-}
-
-function formatDate(isoString) {
-    const date = new Date(isoString);
-    return date.toLocaleString('fr-FR', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit'
-    });
-}
+    function formatDate(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleString('fr-FR', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+    }
 </script>
 
 </body>

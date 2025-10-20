@@ -16,3 +16,4 @@ class LoginHistory(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {'Connecté' if self.is_connected else 'Déconnecté'}"
+    
