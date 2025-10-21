@@ -26,13 +26,14 @@ def user_login(request):
                 user=user,
                 login_time=timezone.now()
             )
+            
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 "admin_notifications",
                 {
                     "type": "user_event",
                     "user": user.username,
-                    "login_time": str(login_record.login_time),
+                    "login_time": login_record.login_time.isoformat(),
                 }
             )
 
@@ -53,13 +54,14 @@ def user_logout(request):
             last_login.logout_time = timezone.now()
             last_login.session_duration = last_login.logout_time - last_login.login_time
             last_login.save()
+            
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 "admin_notifications",
                 {
                     "type": "user_event",
                     "user": request.user.username,
-                    "logout_time": str(last_login.logout_time),
+                    "logout_time": last_login.logout_time.isoformat(),
                     "session_duration": str(last_login.session_duration),
                 }
             )
@@ -81,7 +83,7 @@ def login_history(request):
         LoginHistory.objects
         .filter(login_time__in=[item['last_login'] for item in last_logins])
         .select_related('user')
-        .order_by('user__username')
+        .order_by('-login_time')
     )
 
     return render(request, 'tracking_users/login_history.html', {'history': latest_entries})
@@ -120,12 +122,15 @@ def activate_user(request, user_id):
     messages.success(request, f"L'utilisateur {user.username} a été activé avec succès.")
     return redirect('login_history')
 
-
 def deactivate_user(request, user_id):
     if not request.user.is_staff:
         return redirect('home')
 
     user = get_object_or_404(User, id=user_id)
+    if user_id == request.user.id :
+        messages.error(request, "Vous ne pouvez pas vous désactiver vous même!")
+        return redirect('login_history')
+    
     user.is_active = False
     user.save()
     messages.warning(request, f"L'utilisateur {user.username} a été désactivé.")

@@ -16,8 +16,5 @@ class AdminConsumer(AsyncWebsocketConsumer):
             "user": event["user"],
             "login_time": event.get("login_time"),
             "logout_time": event.get("logout_time"),
-            "logout_time": event.get("logout_time"),
-            "logout_time": event.get("logout_time"),
-            "logout_time": event.get("logout_time"),
             "session_duration": event.get("session_duration"),
         }))
