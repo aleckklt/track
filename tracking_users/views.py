@@ -117,6 +117,10 @@ def activate_user(request, user_id):
         return redirect('home')
 
     user = get_object_or_404(User, id=user_id)
+    if user_id == request.user.id :
+        messages.error(request, "Action non autoriser sur votre propre compte!")
+        return redirect('login_history')
+
     user.is_active = True
     user.save()
     messages.success(request, f"L'utilisateur {user.username} a été activé avec succès.")
