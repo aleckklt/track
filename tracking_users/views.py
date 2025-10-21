@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.contrib import messages
 from django.db.models import Max
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from .models import LoginHistory
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -26,14 +28,13 @@ def user_login(request):
                 user=user,
                 login_time=timezone.now()
             )
-            
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 "admin_notifications",
                 {
                     "type": "user_event",
                     "user": user.username,
-                    "login_time": login_record.login_time.isoformat(),
+                    "login_time": str(login_record.login_time),
                 }
             )
 
@@ -54,20 +55,47 @@ def user_logout(request):
             last_login.logout_time = timezone.now()
             last_login.session_duration = last_login.logout_time - last_login.login_time
             last_login.save()
-            
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
                 "admin_notifications",
                 {
                     "type": "user_event",
                     "user": request.user.username,
-                    "logout_time": last_login.logout_time.isoformat(),
+                    "logout_time": str(last_login.logout_time),
                     "session_duration": str(last_login.session_duration),
                 }
             )
 
         logout(request)
         return redirect('login')
+
+@csrf_exempt
+def auto_logout(request):
+    if request.method == 'POST' and request.user.is_authenticated:
+        last_login = LoginHistory.objects.filter(
+            user=request.user,
+            logout_time__isnull=True
+        ).last()
+
+        if last_login and last_login.login_time:
+            last_login.logout_time = timezone.now()
+            last_login.session_duration = last_login.logout_time - last_login.login_time
+            last_login.save()
+            channel_layer = get_channel_layer()
+            async_to_sync(channel_layer.group_send)(
+                "admin_notifications",
+                {
+                    "type": "user_event",
+                    "user": request.user.username,
+                    "logout_time": str(last_login.logout_time),
+                    "session_duration": str(last_login.session_duration),
+                }
+            )
+
+        logout(request)
+        return JsonResponse({'status': 'success'})
+    
+    return JsonResponse({'status': 'error'})
 
 def login_history(request):
     if not request.user.is_staff:
@@ -117,10 +145,11 @@ def activate_user(request, user_id):
         return redirect('home')
 
     user = get_object_or_404(User, id=user_id)
-    if user_id == request.user.id :
-        messages.error(request, "Action non autoriser sur votre propre compte!")
+    
+    if user.id == request.user.id:
+        messages.error(request, "Vous ne pouvez pas vous désactiver vous-même!")
         return redirect('login_history')
-
+    
     user.is_active = True
     user.save()
     messages.success(request, f"L'utilisateur {user.username} a été activé avec succès.")
@@ -131,8 +160,9 @@ def deactivate_user(request, user_id):
         return redirect('home')
 
     user = get_object_or_404(User, id=user_id)
-    if user_id == request.user.id :
-        messages.error(request, "Vous ne pouvez pas vous désactiver vous même!")
+    
+    if user.id == request.user.id:
+        messages.error(request, "Vous ne pouvez pas vous désactiver vous-même!")
         return redirect('login_history')
     
     user.is_active = False

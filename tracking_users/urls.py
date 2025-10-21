@@ -8,5 +8,6 @@ urlpatterns = [
     path('logout/', views.user_logout, name='logout'),
     path('login-history/', views.login_history, name='login_history'),
     path('activate/<int:user_id>/', views.activate_user, name='activate_user'),
+    path('autologout/', views.auto_logout, name='auto_logout'),
     path('deactivate/<int:user_id>/', views.deactivate_user, name='deactivate_user'),
 ]

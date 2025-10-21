@@ -20,5 +20,17 @@
             {% endif %}
         </div>
     </div>
+
+    <script>
+        window.addEventListener('beforeunload', function() {
+            fetch('{% url "auto_logout" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                keepalive: true
+            });
+        });
+    </script>
 </body>
 </html>
