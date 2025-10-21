@@ -18,12 +18,12 @@
                 <th>Date de déconnexion</th>
                 <th>Temps de connexion</th>
                 <th>Actions</th>
-                <th> Role </th>
+                <th>Role</th>
             </tr>
         </thead>
         <tbody id="historyTableBody">
         {% for entry in history %}
-            <tr>
+            <tr id="row-{{ entry.user.username }}">
                 <td>{{ entry.user.username }}</td>
                 <td>
                     {% if not entry.logout_time %}
@@ -42,10 +42,14 @@
                 </td>
                 <td>
                     {% if entry.user.is_active %}
-                        <form method="post" action="{% url 'deactivate_user' entry.user.id %}" class="d-inline">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-warning btn-sm">Désactiver</button>
-                        </form>
+                        {% if entry.user.id != request.user.id %}
+                            <form method="post" action="{% url 'deactivate_user' entry.user.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning btn-sm">Désactiver</button>
+                            </form>
+                        {% else %}
+                            <button class="btn btn-warning btn-sm" disabled>Désactiver</button>
+                        {% endif %}
                     {% else %}
                         <form method="post" action="{% url 'activate_user' entry.user.id %}" class="d-inline">
                             {% csrf_token %}
@@ -54,7 +58,7 @@
                     {% endif %}
                 </td>
                 <td>
-                     {% if entry.user.is_superuser %}
+                    {% if entry.user.is_superuser %}
                         <span class="badge bg-info text-dark">Admin</span>
                     {% else %}
                         <span class="badge bg-secondary">Utilisateur</span>
@@ -63,7 +67,7 @@
             </tr>
         {% empty %}
             <tr>
-                <td colspan="5">Aucun historique trouvé.</td>
+                <td colspan="7">Aucun historique trouvé.</td>
             </tr>
         {% endfor %}
         </tbody>
@@ -97,21 +101,38 @@
         if (!tbody) return;
 
         const username = data.user || "-";
-        const isConnected = data.login_time
+        const existingRow = document.getElementById(`row-${username}`);
+        
+        if (existingRow) {
+            existingRow.remove();
+        }
+
+        const isConnected = data.login_time && !data.logout_time;
+        const statusBadge = isConnected 
             ? '<span class="badge bg-success">Connecté</span>'
             : '<span class="badge bg-danger">Déconnecté</span>';
+        
+        const loginTime = data.login_time ? formatDate(data.login_time) : "-";
         const logoutTime = data.logout_time ? formatDate(data.logout_time) : "-";
         const duration = data.session_duration || "-";
 
+        const role = data.user === 'admin' 
+            ? '<span class="badge bg-info text-dark">Admin</span>'
+            : '<span class="badge bg-secondary">Utilisateur</span>';
+
+        const actions = isConnected 
+            ? '<button class="btn btn-warning btn-sm">Désactiver</button>'
+            : '<button class="btn btn-success btn-sm">Activer</button>';
+
         const tr = document.createElement("tr");
+        tr.id = `row-${username}`;
         tr.innerHTML = `
             <td>${username}</td>
-            <td>${isConnected}</td>
+            <td>${statusBadge}</td>
             <td>${logoutTime}</td>
             <td>${duration}</td>
-            <td>
-                <button class="btn btn-sm btn-warning">Désactiver</button>
-            </td>
+            <td>${actions}</td>
+            <td>${role}</td>
         `;
         tbody.prepend(tr);
     }
@@ -124,6 +145,5 @@
         });
     }
 </script>
-
 </body>
 </html>

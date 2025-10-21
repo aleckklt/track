@@ -67,7 +67,7 @@ def user_logout(request):
             )
 
         logout(request)
-        return redirect('login')
+    return redirect('login')
 
 @csrf_exempt
 def auto_logout(request):
@@ -101,18 +101,11 @@ def login_history(request):
     if not request.user.is_staff:
         return redirect('home')
 
-    last_logins = (
-        LoginHistory.objects
-        .values('user')
-        .annotate(last_login=Max('login_time'))
-    )
-
-    latest_entries = (
-        LoginHistory.objects
-        .filter(login_time__in=[item['last_login'] for item in last_logins])
-        .select_related('user')
-        .order_by('-login_time')
-    )
+    latest_entries = LoginHistory.objects.filter(
+        id__in=LoginHistory.objects.values('user').annotate(
+            max_id=Max('id')
+        ).values('max_id')
+    ).select_related('user').order_by('-login_time')
 
     return render(request, 'tracking_users/login_history.html', {'history': latest_entries})
 
