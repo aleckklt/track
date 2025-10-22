@@ -43,7 +43,7 @@
                 <td>
                     {% if entry.user.is_active %}
                         {% if entry.user.id != request.user.id %}
-                            <form method="post" action="{% url 'deactivate_user' entry.user.id %}" class="d-inline">
+                            <form method="post" action="{% url 'deactivate_user' entry.user_id %}" class="d-inline">
                                 {% csrf_token %}
                                 <button type="submit" class="btn btn-warning btn-sm">Désactiver</button>
                             </form>
@@ -51,7 +51,7 @@
                             <button class="btn btn-warning btn-sm" disabled>Désactiver</button>
                         {% endif %}
                     {% else %}
-                        <form method="post" action="{% url 'activate_user' entry.user.id %}" class="d-inline">
+                        <form method="post" action="{% url 'activate_user' entry.user_id %}" class="d-inline">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-success btn-sm">Activer</button>
                         </form>

@@ -98,8 +98,6 @@ def auto_logout(request):
     return JsonResponse({'status': 'error'})
 
 def login_history(request):
-    if not request.user.is_staff:
-        return redirect('home')
 
     latest_entries = LoginHistory.objects.filter(
         id__in=LoginHistory.objects.values('user').annotate(
@@ -134,12 +132,10 @@ def register_view(request):
     return render(request, 'tracking_users/register.html')
 
 def activate_user(request, user_id):
-    if not request.user.is_staff:
-        return redirect('home')
-
+    
     user = get_object_or_404(User, id=user_id)
     
-    if user.id == request.user.id:
+    if user_id == request.user.id:
         messages.error(request, "Vous ne pouvez pas vous désactiver vous-même!")
         return redirect('login_history')
     
@@ -149,12 +145,10 @@ def activate_user(request, user_id):
     return redirect('login_history')
 
 def deactivate_user(request, user_id):
-    if not request.user.is_staff:
-        return redirect('home')
-
+    
     user = get_object_or_404(User, id=user_id)
     
-    if user.id == request.user.id:
+    if user_id == request.user.id:
         messages.error(request, "Vous ne pouvez pas vous désactiver vous-même!")
         return redirect('login_history')
     
